@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>StarRef - Мини-приложение</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a1a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .app {
+            max-width: 100%;
+            padding: 16px;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .stars-bg {
+            font-size: 48px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 10px 0;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a3e, #2a2a5e);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid #3a3a6e;
+        }
+        
+        .stat-icon { font-size: 24px; margin-bottom: 8px; }
+        .stat-value { font-size: 22px; font-weight: bold; color: #667eea; }
+        .stat-label { font-size: 12px; color: #888; margin-top: 4px; }
+        
+        .nav-tabs {
+            display: flex;
+            background: #1a1a3e;
+            border-radius: 12px;
+            padding: 4px;
+            margin: 20px 0;
+            gap: 4px;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: #888;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #1a1a3e, #2a2a5e);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid #3a3a6e;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            transition: opacity 0.2s;
+        }
+        
+        .btn:active { opacity: 0.8; }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+        
+        .ref-link {
+            background: #0a0a2e;
+            border-radius: 8px;
+            padding: 12px;
+            word-break: break-all;
+            font-size: 13px;
+            color: #667eea;
+            margin: 12px 0;
+        }
+        
+        .leader-list {
+            list-style: none;
+        }
+        
+        .leader-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #2a2a5e;
+            gap: 12px;
+        }
+        
+        .rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .rank-1 { background: linear-gradient(135deg, #FFD700, #FFA500); }
+        .rank-2 { background: linear-gradient(135deg, #C0C0C0, #A9A9A9); }
+        .rank-3 { background: linear-gradient(135deg, #CD7F32, #8B4513); }
+        .rank-other { background: #2a2a5e; }
+        
+        .user-details { flex: 1; }
+        .user-name { font-weight: 600; font-size: 14px; }
+        .user-refs { font-size: 12px; color: #888; }
+        
+        .hidden { display: none; }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #3a3a6e;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Загрузка...</p>
+        </div>
+        
+        <div id="content" class="hidden">
+            <div class="header">
+                <div class="stars-bg">⭐</div>
+                <div class="title">StarRef Bot</div>
+                <p style="color: #888;" id="user-name"></p>
+            </div>
+            
+            <div class="nav-tabs">
+                <button class="tab-btn active" onclick="showTab('dashboard')">📊 Обзор</button>
+                <button class="tab-btn" onclick="showTab('referrals')">👥 Рефералы</button>
+                <button class="tab-btn" onclick="showTab('leaders')">🏆 Топ</button>
+            </div>
+            
+            <!-- Dashboard -->
+            <div id="tab-dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-value" id="balance">0</div>
+                        <div class="stat-label">Баланс ⭐</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⏳</div>
+                        <div class="stat-value" id="pending">0</div>
+                        <div class="stat-label">Ожидает ⭐</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💸</div>
+                        <div class="stat-value" id="withdrawn">0</div>
+                        <div class="stat-label">Выведено ⭐</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value" id="refs-count">0</div>
+                        <div class="stat-label">Рефералов</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">💸 Вывод звезд</div>
+                    <button class="btn" onclick="withdraw()">Вывести звезды</button>
+                    <p style="text-align: center; margin-top: 12px; color: #888; font-size: 14px;">
+                        💡 Мин. вывод: 75 ⭐
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Referrals -->
+            <div id="tab-referrals" class="hidden">
+                <div class="card">
+                    <div class="card-title">🔗 Ваша ссылка</div>
+                    <div class="ref-link" id="ref-link"></div>
+                    <button class="btn" onclick="copyLink()" style="margin-bottom: 8px;">📋 Копировать</button>
+                    <button class="btn btn-outline" onclick="shareLink()">📤 Поделиться</button>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">🎁 Награды</div>
+                    <div style="line-height: 2;">
+                        <p>👥 5 рефералов = +50 ⭐</p>
+                        <p>👥 10 рефералов = +100 ⭐</p>
+                        <p>👥 25 рефералов = +250 ⭐</p>
+                        <p>👥 50 рефералов = +500 ⭐</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Leaders -->
+            <div id="tab-leaders" class="hidden">
+                <div class="card">
+                    <div class="card-title">🏆 Топ рефералов</div>
+                    <ul class="leader-list" id="leaders-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        
+        let userData = {
+            id: 0,
+            username: 'User',
+            balance: 0,
+            pending: 0,
+            withdrawn: 0,
+            refs: 0,
+            refLink: ''
+        };
+        
+        async function init() {
+            try {
+                if (tg.initDataUnsafe?.user) {
+                    userData.id = tg.initDataUnsafe.user.id;
+                    userData.username = tg.initDataUnsafe.user.username || 
+                                       tg.initDataUnsafe.user.first_name || 'User';
+                }
+                
+                await loadData();
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                document.getElementById('user-name').textContent = '@' + userData.username;
+                
+                tg.ready();
+                tg.expand();
+            } catch (e) {
+                console.error('Init error:', e);
+                document.getElementById('loading').innerHTML = '<p>Ошибка загрузки</p>';
+            }
+        }
+        
+        async function loadData() {
+            // Здесь должен быть API запрос к вашему серверу
+            // Пока используем данные из Telegram
+            userData.balance = 250;
+            userData.pending = 75;
+            userData.withdrawn = 500;
+            userData.refs = 12;
+            userData.refLink = `https://t.me/StarsPatronbot?start=ref${userData.id}`;
+            
+            updateUI();
+        }
+        
+        function updateUI() {
+            document.getElementById('balance').textContent = userData.balance;
+            document.getElementById('pending').textContent = userData.pending;
+            document.getElementById('withdrawn').textContent = userData.withdrawn;
+            document.getElementById('refs-count').textContent = userData.refs;
+            document.getElementById('ref-link').textContent = userData.refLink;
+        }
+        
+        function showTab(tab) {
+            document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tab === 'leaders') loadLeaders();
+        }
+        
+        function loadLeaders() {
+            const list = document.getElementById('leaders-list');
+            const leaders = [
+                { name: 'crypto_king', refs: 156 },
+                { name: 'star_hunter', refs: 124 },
+                { name: 'referral_master', refs: 98 },
+                { name: 'top_earner', refs: 87 },
+                { name: 'social_pro', refs: 65 }
+            ];
+            
+            list.innerHTML = leaders.map((user, i) => `
+                <li class="leader-item">
+                    <div class="rank rank-${i < 3 ? i + 1 : 'other'}">
+                        ${i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name">@${user.name}</div>
+                        <div class="user-refs">${user.refs} рефералов</div>
+                    </div>
+                </li>
+            `).join('');
+        }
+        
+        function copyLink() {
+            navigator.clipboard.writeText(userData.refLink).then(() => {
+                tg.showAlert('✅ Ссылка скопирована!');
+            });
+        }
+        
+        function shareLink() {
+            const text = `🎁 Получи 25 звезд! Присоединяйся!\n${userData.refLink}`;
+            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(userData.refLink)}`);
+        }
+        
+        function withdraw() {
+            if (userData.balance < 75) {
+                tg.showAlert(`❌ Минимум 75 ⭐\nУ вас: ${userData.balance} ⭐`);
+            } else {
+                tg.showAlert(`✅ Доступно: ${userData.balance} ⭐\nОбратитесь к администратору`);
+            }
+        }
+        
+        init();
+    </script>
+</body>
+</html>
